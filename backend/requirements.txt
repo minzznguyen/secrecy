@@ -1,0 +1,17 @@
+fastapi
+uvicorn==0.23.2
+pydantic
+python-dateutil==2.8.2
+openai>=1.0.0,<2.0.0
+python-dotenv==1.0.0
+pytz==2023.3
+requests==2.31.0
+protobuf>=3.20.3,<5.0.0
+traceback-with-variables==2.0.4
+pydub==0.25.1
+ffmpeg-python==0.2.0
+elevenlabs
+pyaudio
+twilio
+websockets
+aiohttp>=3.8.0

@@ -1,0 +1,19 @@
+{
+    "title": "Project Status Meeting",
+    "description": "Weekly team meeting to discuss project progress",
+    "startDateTime": "2023-09-15T14:00:00-04:00",
+    "endDateTime": "2023-09-15T15:00:00-04:00",
+    "location": "Conference Room A",
+    "attendees": [
+        {
+            "name": "John Smith",
+            "email": "john@example.com"
+        },
+        {
+            "name": "Jane Doe",
+            "email": "jane@example.com"
+        }
+    ],
+    "organizer": "Alice Johnson",
+    "timezone": "America/New_York"
+} 
