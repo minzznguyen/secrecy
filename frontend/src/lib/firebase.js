@@ -1,5 +1,5 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
@@ -14,28 +14,42 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Add some logging to verify Firebase is initializing correctly
-console.log("Initializing Firebase");
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-console.log("Firebase initialized successfully");
+// Initialize Firebase using try-catch to handle existing app
+let app;
+try {
+  app = getApp();
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
 
-// Initialize Firebase Authentication and get a reference to the service
-export const auth = getAuth(app);
+// Initialize Analytics only in production and if supported
+let analytics = null;
+if (import.meta.env.PROD) {
+  try {
+    analytics = getAnalytics(app);
+    console.log("Firebase Analytics initialized successfully");
+  } catch (e) {
+    console.log("Firebase Analytics initialization skipped");
+  }
+}
+
+// Initialize Firebase Authentication
+const auth = getAuth(app);
 
 // Create Google provider with calendar scopes
-export const googleProvider = new GoogleAuthProvider();
+const googleProvider = new GoogleAuthProvider();
 
 // Add Google Calendar scopes
 googleProvider.addScope('https://www.googleapis.com/auth/calendar');
 googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
 
-// Set custom parameters to always prompt for consent
+// Set custom parameters
 googleProvider.setCustomParameters({
   prompt: 'consent',
-  access_type: 'offline' // This requests a refresh token
+  access_type: 'offline'
 });
 
 console.log("Firebase auth initialized with Google Calendar scopes");
 
+export { auth, googleProvider };
 export default app;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { SignIn } from '../components/auth/SignIn';
 import { SignUp } from '../components/auth/SignUp';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth } from '../lib/firebase';
 
 export function LoginPage() {
   const [authMode, setAuthMode] = useState('signin');
