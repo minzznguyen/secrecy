@@ -433,7 +433,7 @@ function App() {
           <WeeklyAvailability onSave={handleAvailabilitySave} />
           
           {/* Show availability summary if available */}
-          {userAvailability && (
+          {/* {userAvailability && (
             <div className="text-sm bg-gray-50 p-3 rounded-md border mb-6">
               <div className="font-medium mb-1 flex items-center">
                 <span>Current Availability</span>
@@ -441,9 +441,9 @@ function App() {
               </div>
               <div className="text-gray-600">{userAvailability}</div>
             </div>
-          )}
+          )} */}
           
-          {/* Test Calendar Integration Button */}
+          {/* Test Calendar Integration Button
           <div className="flex justify-center mt-4">
             <Button 
               onClick={testCalendarIntegration}
@@ -454,7 +454,7 @@ function App() {
               <FiTool size={16} />
               Test Calendar Integration
             </Button>
-          </div>
+          </div> */}
           
           {/* Phone Schedule Form - Now right after test button */}
           {userAvailability && <PhoneScheduleForm userAvailability={userAvailability} />}
@@ -488,14 +488,14 @@ function App() {
           </div>
           
           {/* Transcript Display */}
-          {showTranscript && messages.length > 0 && (
+          {/* {showTranscript && messages.length > 0 && (
             <div className="mt-4 p-4 border rounded-lg bg-gray-50">
               <h3 className="text-md font-medium mb-2">Conversation Transcript</h3>
               <pre className="whitespace-pre-line text-sm bg-white p-3 rounded border max-h-40 overflow-y-auto">
                 {formattedTranscript}
               </pre>
             </div>
-          )}
+          )} */}
           
           {/* Meeting Data Form */}
           <div className="mt-6 p-4 border rounded-lg bg-gray-50">
