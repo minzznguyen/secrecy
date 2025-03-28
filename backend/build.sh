@@ -18,4 +18,5 @@ apt-get update && apt-get install -y \
 
 # Install Python dependencies
 pip install --upgrade pip
+pip install pyaudio
 pip install -r requirements.txt 
