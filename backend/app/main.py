@@ -1,10 +1,14 @@
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import twilio_routes, calendar_routes
+from .routes import twilio_routes, calendar_routes, auth
 from .middleware import auth_middleware
+from .lib.firebase import initialize_firebase
 import logging
 
 app = FastAPI()
+
+# Initialize Firebase
+initialize_firebase()
 
 # Add CORS middleware
 app.add_middleware(
@@ -18,6 +22,19 @@ app.add_middleware(
 # Include routers
 app.include_router(twilio_routes.router)
 app.include_router(calendar_routes.router)
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+
+# Debug endpoint to list all routes
+@app.get("/debug/routes")
+async def list_routes():
+    routes = []
+    for route in app.routes:
+        routes.append({
+            "path": route.path,
+            "name": route.name,
+            "methods": route.methods
+        })
+    return routes
 
 # Add authentication dependency to protected routes
 # You can add this to specific routes that need authentication

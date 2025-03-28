@@ -1,51 +1,54 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import Dict, Any
+from ..controllers.calendar_controller import CalendarController
+from ..middleware.auth_middleware import get_authenticated_user
 import logging
 
-from ..controllers.calendar_controller import CalendarController
-from ..dependencies import get_calendar_controller
-
-router = APIRouter()
 logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
-@router.post("/test-calendar")
-async def test_calendar_integration(data: Dict[str, Any], 
-                                    calendar_controller: CalendarController = Depends(get_calendar_controller)):
-    """Test endpoint for calendar integration with dummy data"""
-    logger.info("Testing calendar integration with dummy data")
+def get_calendar_controller():
+    return CalendarController()
+
+@router.post("/create-event")
+async def create_event(
+    request: dict,
+    user = Depends(get_authenticated_user),
+    controller: CalendarController = Depends(get_calendar_controller)
+):
+    """
+    Create a calendar event using the user's stored Google tokens
     
-    try:
-        meeting_details = data.get("meeting_details", {})
-        host_email = data.get("host_email", "")
-        host_availability = data.get("host_availability", "")
-        
-        logger.info(f"Received test data: {meeting_details}")
-        logger.info(f"Host email: {host_email}")
-        logger.info(f"Host availability: {host_availability}")
-        
-        # Validate required data
-        if not meeting_details or not host_email:
-            raise HTTPException(status_code=400, detail="Missing required data")
-        
-        # Create the event using the calendar controller
-        result = await calendar_controller.create_event_with_host(
-            meeting_details,
-            host_email,
-            host_availability
-        )
-        
-        logger.info(f"Test calendar integration result: {result}")
-        
-        return {
-            "success": result.get("success", False),
-            "event": result,
-            "message": "Calendar integration test completed"
+    Request body:
+    {
+        "user_id": "string",
+        "meeting_data": {
+            "title": "string",
+            "startDateTime": "string",
+            "endDateTime": "string",
+            "description": "string"
         }
-    
-    except Exception as e:
-        logger.error(f"Error in calendar integration test: {str(e)}")
+    }
+    """
+    try:
+        # Extract meeting data from request
+        meeting_data = request.get("meeting_data")
+        if not meeting_data:
+            raise HTTPException(status_code=400, detail="No meeting data provided")
+        
+        # Create the event
+        event = await controller.create_event(user["uid"], meeting_data)
+        
         return {
-            "success": False,
-            "error": str(e),
-            "message": "Calendar integration test failed"
-        } 
+            "success": True,
+            "event_id": event.get("id"),
+            "event": event
+        }
+        
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error creating calendar event: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create calendar event: {str(e)}"
+        ) 

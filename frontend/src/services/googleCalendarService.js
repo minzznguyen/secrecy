@@ -113,4 +113,31 @@ export const testCalendarAccess = async (accessToken) => {
     console.error('Error testing calendar access:', error);
     return { success: false, error: error.message };
   }
+};
+
+// Helper function to create an event with token refresh capability
+export const createEventWithRefresh = async (accessToken, refreshToken, calendarId, eventData) => {
+  try {
+    // First attempt with current token
+    try {
+      return await createEvent(accessToken, calendarId, eventData);
+    } catch (error) {
+      // If unauthorized, try to refresh token
+      if (error.message.includes('401')) {
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+        
+        // Refresh the token
+        const newAccessToken = await refreshAccessToken(refreshToken);
+        
+        // Retry with new token
+        return await createEvent(newAccessToken, calendarId, eventData);
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error creating event with refresh:', error);
+    throw error;
+  }
 }; 

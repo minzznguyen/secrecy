@@ -2,7 +2,6 @@ from fastapi import APIRouter, Request, Response, Depends, HTTPException, WebSoc
 from ..controllers.twilio_controller import TwilioController
 from ..controllers.elevenlabs_controller import ElevenLabsController
 from ..controllers.text_parser_controller import TextParserController
-from ..controllers.calendar_controller import CalendarController
 from ..utils.twilio_audio_interface import TwilioAudioInterface
 from ..utils.call_manager import CallManager
 from pydantic import BaseModel
@@ -14,6 +13,8 @@ import urllib.parse
 from twilio.twiml.voice_response import VoiceResponse, Connect
 import datetime
 import time
+from ..services.google_calendar_service import GoogleCalendarService
+from ..services.firebase_service import FirebaseService
 
 # Try to import from the documented structure
 try:
@@ -48,6 +49,10 @@ except NameError:
 # Initialize the call manager
 call_manager = CallManager()
 
+# Initialize services
+firebase_service = FirebaseService()
+calendar_service = GoogleCalendarService()
+
 class CallRequest(BaseModel):
     phone_number: str
     host_availability: Optional[str] = None
@@ -63,9 +68,6 @@ def get_elevenlabs_controller():
 
 def get_text_parser_controller():
     return TextParserController()
-
-def get_calendar_controller():
-    return CalendarController()
 
 @router.post("/call")
 async def initiate_call(
@@ -458,27 +460,67 @@ async def handle_media_stream(
                         
                         print(f"Meeting details extracted: {meeting_details}")
                         
-                        # Get the calendar controller
-                        calendar_controller = get_calendar_controller()
+                        # Store the meeting details in the call manager
+                        if stream_sid:
+                            call_manager.active_calls[stream_sid]["meeting_details"] = meeting_details
                         
-                        # Create the event
-                        print(f"\n=== WEBSOCKET: CREATING CALENDAR EVENT ===")
-                        event_result = await calendar_controller.create_event_with_host(
-                            meeting_details,
-                            host_email,
-                            host_availability
-                        )
-                        
-                        print(f"Calendar event creation result: {event_result}")
+                        # No need to create calendar event here, just log details
+                        form_data = meeting_details.get("formData", {})
+                        print(f"  =======================PHONE CALL DETAILS=======================")
+                        print(f"  Title: {form_data.get('title', '')}")
+                        print(f"  Description: {form_data.get('description', '')}")
+                        print(f"  Start Time: {form_data.get('startDateTime', '')}")
+                        print(f"  End Time: {form_data.get('endDateTime', '')}")
+                        print(f"  ================================================================")
+
+                        # Send meeting details through WebSocket
+                        try:
+                            await websocket.send_json({
+                                "type": "meeting_details",
+                                "data": meeting_details
+                            })
+                            print("\n=== WEBSOCKET: SENT MEETING DETAILS ===")
+                        except Exception as e:
+                            print(f"\n=== WEBSOCKET: ERROR SENDING MEETING DETAILS ===")
+                            print(f"Error: {str(e)}")
+                            print(f"===========================================\n")
                     except Exception as e:
                         print(f"\n=== WEBSOCKET: ERROR PROCESSING TRANSCRIPT ===")
                         print(f"Error: {str(e)}")
                         print(f"=================================================\n")
-                        traceback.print_exc()
                 else:
                     print("\n=== WEBSOCKET: NO TRANSCRIPT TO PROCESS ===")
                     print(f"Transcript list length: {len(full_transcript)}")
                     print(f"Stream SID: {stream_sid}")
+                
+                # Create calendar event if we have valid meeting details
+                if form_data and host_email:
+                    try:
+                        print("\n=== CREATING CALENDAR EVENT ===")
+                        # Get tokens from Firebase
+                        tokens = await firebase_service.get_user_tokens(host_email)
+                        if not tokens:
+                            print(f"No tokens found for user: {host_email}")
+                            raise HTTPException(status_code=404, detail="User tokens not found")
+                        
+                        # Format the meeting data for Google Calendar
+                        calendar_event_data = calendar_service.format_meeting_for_calendar(form_data)
+                        
+                        # Create the event using the access token
+                        event_result = calendar_service.create_event(
+                            access_token=tokens["access_token"],
+                            calendar_id="primary",
+                            event_data=calendar_event_data
+                        )
+                        
+                        print(f"Calendar event created successfully: {event_result}")
+                        
+                        # Store the event ID with the call data
+                        call_manager.active_calls[stream_sid]["calendar_event_id"] = event_result.get("id")
+                        
+                    except Exception as e:
+                        print(f"Error creating calendar event: {str(e)}")
+                        # Don't raise the exception - we still want to clean up the call data
                 
             except Exception as e:
                 print(f"\n=== WEBSOCKET: ERROR ENDING CONVERSATION SESSION ===")
@@ -553,19 +595,44 @@ async def twilio_status_callback(request: Request):
                     meeting_details = text_parser.parse_to_json(transcript, host_availability, host_name)
                     
                     print(f"Meeting details extracted: {meeting_details}")
+
+                    form_data = meeting_details.get("formData", {})
+                    print(f"\n=== EXTRACTED MEETING DETAILS ===")
+                    print(f"  Title: {form_data.get('title', '')}")
+                    print(f"  Description: {form_data.get('description', '')}")
+                    print(f"  Start Time: {form_data.get('startDateTime', '')}")
+                    print(f"  End Time: {form_data.get('endDateTime', '')}")
+                    print(f"===================================\n")
                     
-                    # Get the calendar controller
-                    calendar_controller = get_calendar_controller()
+                    # Create calendar event if we have valid meeting details
+                    if form_data and host_email:
+                        try:
+                            print("\n=== CREATING CALENDAR EVENT ===")
+                            # Get tokens from Firebase
+                            tokens = await firebase_service.get_user_tokens(host_email)
+                            if not tokens:
+                                print(f"No tokens found for user: {host_email}")
+                                raise HTTPException(status_code=404, detail="User tokens not found")
+                            
+                            # Format the meeting data for Google Calendar
+                            calendar_event_data = calendar_service.format_meeting_for_calendar(form_data)
+                            
+                            # Create the event using the access token
+                            event_result = calendar_service.create_event(
+                                access_token=tokens["access_token"],
+                                calendar_id="primary",
+                                event_data=calendar_event_data
+                            )
+                            
+                            print(f"Calendar event created successfully: {event_result}")
+                            
+                            # Store the event ID with the call data
+                            call_manager.active_calls[call_sid]["calendar_event_id"] = event_result.get("id")
+                            
+                        except Exception as e:
+                            print(f"Error creating calendar event: {str(e)}")
+                            # Don't raise the exception - we still want to clean up the call data
                     
-                    # Create the event
-                    print(f"\n=== STATUS CALLBACK: CREATING CALENDAR EVENT ===")
-                    event_result = await calendar_controller.create_event_with_host(
-                        meeting_details,
-                        host_email,
-                        host_availability
-                    )
-                    
-                    print(f"Calendar event creation result: {event_result}")
                 else:
                     print("WARNING: No transcript available for processing")
             except Exception as e:
@@ -621,4 +688,42 @@ async def test_params(request: CallRequest):
             "host_email": request.host_email,
             "host_name": request.host_name  # Include the name in the response
         }
-    } 
+    }
+
+@router.get("/meeting-details/{call_sid}")
+async def get_meeting_details(call_sid: str):
+    """Get meeting details for a specific call"""
+    try:
+        # Get the call data from call_manager
+        call_data = call_manager.get_call_data(call_sid)
+        
+        if not call_data:
+            return {"success": False, "error": "Call not found"}
+        
+        # Get transcript and extract meeting details if needed
+        transcript = call_manager.get_formatted_transcript(call_sid)
+        
+        # Check if meeting details already exist
+        if "meeting_details" in call_data:
+            form_data = call_data["meeting_details"].get("formData", {})
+            return {"success": True, "formData": form_data}
+        
+        # If no meeting details but we have a transcript, try to extract them
+        if transcript:
+            text_parser = get_text_parser_controller()
+            host_availability = call_data.get("host_availability", "")
+            host_name = call_data.get("host_name", "")
+            
+            # Parse transcript to get meeting details
+            meeting_details = text_parser.parse_to_json(transcript, host_availability, host_name)
+            
+            # Store the meeting details in the call_manager
+            call_manager.active_calls[call_sid]["meeting_details"] = meeting_details
+            
+            return {"success": True, "formData": meeting_details.get("formData", {})}
+        
+        return {"success": False, "error": "No meeting details available"}
+    
+    except Exception as e:
+        logger.error(f"Error getting meeting details: {str(e)}")
+        return {"success": False, "error": str(e)} 

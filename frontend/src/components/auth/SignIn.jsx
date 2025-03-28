@@ -1,15 +1,13 @@
 import { useState } from 'react';
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../../lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { FcGoogle } from 'react-icons/fc';
-import { useAuth } from '../../contexts/AuthContext';
-import { GoogleAuthProvider } from 'firebase/auth';
+import { initiateGoogleOAuth } from '../../services/googleOAuthService';
 
 export function SignIn({ onSignIn }) {
-  const { setGoogleToken } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -32,64 +30,16 @@ export function SignIn({ onSignIn }) {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log("Starting Google sign-in process");
-      
-      // Create a new provider instance for this sign-in to ensure fresh scopes
-      const provider = new GoogleAuthProvider();
-      
-      // Add the specific scopes needed for calendar
-      provider.addScope('https://www.googleapis.com/auth/calendar');
-      provider.addScope('https://www.googleapis.com/auth/calendar.events');
-      
-      // Force re-authentication to get fresh tokens with the right scopes
-      provider.setCustomParameters({
-        prompt: 'consent',
-        access_type: 'offline'
-      });
-      
-      const userCredential = await signInWithPopup(auth, provider);
-      console.log('User signed in with Google:', userCredential.user.email);
-      
-      // Get the credential from the result
-      const credential = GoogleAuthProvider.credentialFromResult(userCredential);
-      console.log("Credential received:", credential ? "Yes" : "No");
-      
-      if (credential) {
-        // This is the Google OAuth access token we need for API calls
-        const token = credential.accessToken;
-        console.log('Access token received:', token ? "Yes (length: " + token.length + ")" : "No");
-        
-        if (token) {
-          console.log('Setting Google token in context');
-          setGoogleToken(token);
-          
-          // Store it in localStorage directly as a backup
-          localStorage.setItem('googleAccessToken', token);
-          
-          // Verify token was stored
-          setTimeout(() => {
-            const storedToken = localStorage.getItem('googleAccessToken');
-            console.log("Token in localStorage:", storedToken ? "Yes (length: " + storedToken.length + ")" : "No");
-          }, 100);
-        } else {
-          console.error('No access token received from Google');
-          setError("Failed to get access token from Google");
-        }
-      } else {
-        console.error('No credential received from Google sign-in');
-        setError("Failed to get credentials from Google");
-      }
-      
-      if (onSignIn) onSignIn(userCredential.user);
+      console.log("Starting Google OAuth flow");
+      initiateGoogleOAuth();
     } catch (error) {
-      console.error('Error signing in with Google:', error);
+      console.error('Error initiating Google sign-in:', error);
       setError(error.message);
-    } finally {
       setLoading(false);
     }
   };

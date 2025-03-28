@@ -2,6 +2,7 @@
 import { initializeApp, getApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -14,15 +15,18 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase using try-catch to handle existing app
-let app;
-try {
-  app = getApp();
-} catch (e) {
-  app = initializeApp(firebaseConfig);
-}
+// Log the configuration (without sensitive data)
+console.log("Firebase Config:", {
+  projectId: firebaseConfig.projectId,
+  authDomain: firebaseConfig.authDomain,
+  storageBucket: firebaseConfig.storageBucket
+});
 
-// Initialize Analytics only in production and if supported
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+console.log("Firebase app initialized successfully");
+
+// Initialize Analytics only in production
 let analytics = null;
 if (import.meta.env.PROD) {
   try {
@@ -35,21 +39,31 @@ if (import.meta.env.PROD) {
 
 // Initialize Firebase Authentication
 const auth = getAuth(app);
+console.log("Firebase Auth initialized successfully");
 
-// Create Google provider with calendar scopes
+// Initialize Firestore
+const db = getFirestore(app);
+console.log("Firestore initialized successfully");
+
+// Create Google provider
 const googleProvider = new GoogleAuthProvider();
 
-// Add Google Calendar scopes
-googleProvider.addScope('https://www.googleapis.com/auth/calendar');
-googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
+// Add Google scopes - using most specific scopes needed
+googleProvider.addScope('https://www.googleapis.com/auth/userinfo.email');
+googleProvider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');  // This includes both read and write access to events
 
-// Set custom parameters
+// Configure provider to request refresh tokens
 googleProvider.setCustomParameters({
   prompt: 'consent',
-  access_type: 'offline'
+  access_type: 'offline',
+  response_type: 'code'
 });
 
-console.log("Firebase auth initialized with Google Calendar scopes");
+// Initialize Google Auth
+const googleAuth = getAuth(app);
 
-export { auth, googleProvider };
+console.log("Firebase auth initialized with Google scopes");
+
+export { auth, googleAuth, googleProvider, db };
 export default app;

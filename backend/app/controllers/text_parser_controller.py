@@ -135,11 +135,11 @@ class TextParserController:
             if host_availability:
                 system_content += f"\nThe host is available: {host_availability}. Please ensure the suggested meeting time aligns with the host's availability."
             if host_name:
-                system_content += f"\nThe host's name is {host_name}."
+                system_content += f"\nThe host's name is {host_name}. Make sure to include the customer's name in the title of the meeting."
                 
             system_content += "\n\nParse the conversation and ensure your output matches the structure of the example exactly."
 
-            logger.info("Sending to GPT-4...")
+            logger.info("Sending to GPT-4o-mini...")
             try:
                 completion = self.client.chat.completions.create(
                     model="gpt-4o-mini",
@@ -155,7 +155,7 @@ class TextParserController:
                     ],
                     temperature=0.7
                 )
-                logger.info("GPT-4 processing completed")
+                logger.info("GPT-4o-mini processing completed")
             except Exception as api_err:  # Use a generic Exception
                 logger.error(f"OpenAI API error: {str(api_err)}")
                 return {

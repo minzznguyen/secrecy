@@ -4,22 +4,11 @@ import { auth } from '../lib/firebase';
 
 const AuthContext = createContext();
 
-// Store token in localStorage for persistence
-const saveTokenToStorage = (token) => {
-  if (token) {
-    localStorage.setItem('googleAccessToken', token);
-  } else {
-    localStorage.removeItem('googleAccessToken');
-  }
-};
-
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  // Initialize from localStorage if available
-  const [googleAccessToken, setGoogleAccessToken] = useState(
-    localStorage.getItem('googleAccessToken')
-  );
+  const [googleAccessToken, setGoogleAccessToken] = useState(null);
+  const [googleRefreshToken, setGoogleRefreshToken] = useState(null);
 
   useEffect(() => {
     console.log("Setting up auth state listener");
@@ -27,11 +16,11 @@ export function AuthProvider({ children }) {
       console.log("Auth state changed:", user ? "User logged in" : "No user");
       setCurrentUser(user);
       
-      // If user logs out, clear token
+      // If user logs out, clear tokens
       if (!user) {
-        console.log("User logged out, clearing token");
+        console.log("User logged out, clearing tokens");
         setGoogleAccessToken(null);
-        saveTokenToStorage(null);
+        setGoogleRefreshToken(null);
       }
       
       setLoading(false);
@@ -40,11 +29,11 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  // Function to store Google access token
-  const setGoogleToken = (token) => {
-    console.log("Storing Google access token:", token ? "Token received" : "No token");
-    setGoogleAccessToken(token);
-    saveTokenToStorage(token);
+  // Function to store Google tokens
+  const setGoogleTokens = (accessToken, refreshToken) => {
+    console.log("Storing Google tokens:", accessToken ? "Access token received" : "No access token", refreshToken ? "Refresh token received" : "No refresh token");
+    setGoogleAccessToken(accessToken);
+    setGoogleRefreshToken(refreshToken);
   };
 
   // Add a function to refresh the token when needed
@@ -58,11 +47,12 @@ export function AuthProvider({ children }) {
         
         const result = await signInWithPopup(auth, provider);
         const credential = GoogleAuthProvider.credentialFromResult(result);
-        const newToken = credential.accessToken;
+        const newAccessToken = credential.accessToken;
+        const newRefreshToken = credential.refreshToken;
         
-        console.log("Token refreshed:", newToken ? "Success" : "Failed");
-        setGoogleToken(newToken);
-        return newToken;
+        console.log("Tokens refreshed:", newAccessToken ? "Access token success" : "Failed", newRefreshToken ? "Refresh token success" : "Failed");
+        setGoogleTokens(newAccessToken, newRefreshToken);
+        return newAccessToken;
       }
     } catch (error) {
       console.error('Error refreshing token:', error);
@@ -74,8 +64,10 @@ export function AuthProvider({ children }) {
     currentUser,
     loading,
     googleAccessToken,
-    setGoogleToken,
-    refreshGoogleToken
+    googleRefreshToken,
+    setGoogleTokens,
+    refreshGoogleToken,
+    setCurrentUser
   };
 
   // Show a loading indicator while checking auth state

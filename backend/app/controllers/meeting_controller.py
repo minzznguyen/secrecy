@@ -156,7 +156,7 @@ class MeetingController:
             """
             
             response = self.openai_client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant that extracts meeting details from conversations."},
                     {"role": "user", "content": prompt}

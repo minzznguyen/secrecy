@@ -1,15 +1,20 @@
-from app.controllers.calendar_controller import CalendarController
-from app.services.calendar_service import CalendarService
+from app.controllers.meeting_controller import MeetingController
+from app.controllers.twilio_controller import TwilioController
+from app.controllers.elevenlabs_controller import ElevenLabsController
 from app.controllers.text_parser_controller import TextParserController
 
-# Calendar dependencies
-def get_calendar_service():
-    return CalendarService()
+# Meeting dependencies
+def get_meeting_controller():
+    return MeetingController()
 
-def get_calendar_controller():
-    calendar_service = get_calendar_service()
-    return CalendarController(calendar_service)
+# Twilio dependencies
+def get_twilio_controller():
+    return TwilioController()
 
-# Text parser dependencies
+# ElevenLabs dependencies
+def get_elevenlabs_controller():
+    return ElevenLabsController()
+
+# Text Parser dependencies
 def get_text_parser_controller():
     return TextParserController() 

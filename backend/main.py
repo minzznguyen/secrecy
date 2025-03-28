@@ -150,7 +150,9 @@ async def process_text(request: ElevenLabsRequest, controller: MeetingController
         logger.error(f"Error processing text: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Add this line after your other app.include_router calls
+# Add Twilio routes
 app.include_router(twilio_routes.router)
-app.include_router(calendar_routes.router, prefix="/api", tags=["calendar"])
+
+# Add Calendar routes
+app.include_router(calendar_routes.router)
 
