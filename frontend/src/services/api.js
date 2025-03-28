@@ -1,5 +1,5 @@
 // Base API URL from environment variable or default to relative path
-const API_BASE_URL = 'http://localhost:8000';  // Empty string to use the proxy configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 import { auth } from '../lib/firebase';
 
 export const initiateCall = async (phoneNumber, hostAvailability, hostEmail, hostName) => {
