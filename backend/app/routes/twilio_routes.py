@@ -507,7 +507,7 @@ async def handle_media_stream(
                         calendar_event_data = calendar_service.format_meeting_for_calendar(form_data)
                         
                         # Create the event using the access token
-                        event_result = calendar_service.create_event(
+                        event_result = await calendar_service.create_event(
                             access_token=tokens["access_token"],
                             calendar_id="primary",
                             event_data=calendar_event_data
@@ -618,7 +618,7 @@ async def twilio_status_callback(request: Request):
                             calendar_event_data = calendar_service.format_meeting_for_calendar(form_data)
                             
                             # Create the event using the access token
-                            event_result = calendar_service.create_event(
+                            event_result = await calendar_service.create_event(
                                 access_token=tokens["access_token"],
                                 calendar_id="primary",
                                 event_data=calendar_event_data

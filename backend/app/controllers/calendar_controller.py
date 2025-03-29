@@ -1,10 +1,11 @@
 import logging
 import os
-import requests
+import aiohttp
 from ..services.google_calendar_service import GoogleCalendarService
 from ..services.firebase_service import FirebaseService
 from fastapi import HTTPException
 from datetime import datetime
+from firebase_admin import auth
 
 logger = logging.getLogger(__name__)
 
@@ -34,20 +35,30 @@ class CalendarController:
                 'grant_type': 'refresh_token'
             }
             
-            # Make the request to Google's token endpoint
-            response = requests.post(self.google_token_url, data=data)
-            response.raise_for_status()  # Raises an HTTPError for bad responses
+            logger.info("Attempting to refresh access token")
             
-            token_data = response.json()
-            
-            # Update the tokens in Firebase with new access token
-            updated_tokens = {
-                'access_token': token_data['access_token'],
-                'token_expiry': datetime.now().timestamp() + token_data['expires_in'],
-                'updated_at': datetime.now().isoformat()
-            }
-            
-            return updated_tokens
+            # Make the request to Google's token endpoint using aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self.google_token_url, data=data) as response:
+                    if not response.ok:
+                        error_text = await response.text()
+                        logger.error(f"Token refresh failed: {error_text}")
+                        raise HTTPException(
+                            status_code=response.status,
+                            detail=f"Failed to refresh token: {error_text}"
+                        )
+                    
+                    token_data = await response.json()
+                    
+                    # Update the tokens in Firebase with new access token
+                    updated_tokens = {
+                        'access_token': token_data['access_token'],
+                        'token_expiry': datetime.now().timestamp() + token_data['expires_in'],
+                        'updated_at': datetime.now().isoformat()
+                    }
+                    
+                    logger.info("Successfully refreshed access token")
+                    return updated_tokens
             
         except Exception as e:
             logger.error(f"Error refreshing access token: {str(e)}")
@@ -68,14 +79,26 @@ class CalendarController:
             dict: The created event data
         """
         try:
-            # Get user's tokens from Firebase
-            tokens = self.firebase_service.get_user_tokens(user_id)
+            # Get user's email from Firebase Auth
+            user = auth.get_user(user_id)
+            user_email = user.email
+            
+            if not user_email:
+                raise HTTPException(
+                    status_code=400,
+                    detail="User email not found"
+                )
+            
+            # Get user's tokens from Firebase using email
+            tokens = await self.firebase_service.get_user_tokens(user_email)
             
             if not tokens:
                 raise HTTPException(
                     status_code=401,
                     detail="No Google tokens found. Please authenticate with Google first."
                 )
+            
+            logger.info(f"Retrieved tokens for user {user_email}")
             
             # Check if we need to refresh the access token
             current_time = datetime.now().timestamp()
@@ -88,7 +111,7 @@ class CalendarController:
                 
                 # Update the stored tokens
                 tokens.update(updated_tokens)
-                self.firebase_service.store_user_tokens(user_id, tokens)
+                await self.firebase_service.store_user_tokens(user_email, tokens)
                 
                 logger.info("Successfully refreshed and stored new access token")
             
@@ -96,13 +119,13 @@ class CalendarController:
             formatted_event = self.calendar_service.format_meeting_for_calendar(meeting_data)
             
             # Create the event using the current/refreshed access token
-            event = self.calendar_service.create_event(
+            event = await self.calendar_service.create_event(
                 access_token=tokens['access_token'],
                 calendar_id='primary',
                 event_data=formatted_event
             )
             
-            logger.info(f"Successfully created calendar event for user {user_id}")
+            logger.info(f"Successfully created calendar event for user {user_email}")
             return event
             
         except Exception as e:

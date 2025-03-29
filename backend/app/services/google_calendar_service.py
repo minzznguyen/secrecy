@@ -4,6 +4,7 @@ from typing import Dict, Optional, Tuple
 import requests
 from fastapi import HTTPException
 import re
+import aiohttp
 
 class GoogleCalendarService:
     def __init__(self):
@@ -87,38 +88,38 @@ class GoogleCalendarService:
             print(f"Error formatting meeting data: {str(e)}")
             raise ValueError(f"Invalid meeting data format: {str(e)}")
 
-    def test_calendar_access(self, access_token: str) -> Dict:
+    async def test_calendar_access(self, access_token: str) -> Dict:
         """Test if the token has calendar permissions"""
         try:
             print("Testing calendar access with token")
             
-            response = requests.get(
-                f"{self.CALENDAR_API_BASE_URL}/users/me/calendarList",
-                headers={"Authorization": f"Bearer {access_token}"}
-            )
-            
-            if not response.ok:
-                error_text = response.text
-                print(f"Calendar API test failed: {error_text}")
-                return {
-                    "success": False,
-                    "error": f"Status: {response.status_code}, Details: {error_text}"
-                }
-            
-            data = response.json()
-            return {
-                "success": True,
-                "calendars": len(data.get("items", [])),
-                "primaryCalendarId": next(
-                    (cal["id"] for cal in data.get("items", []) if cal.get("primary")),
-                    "primary"
-                )
-            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{self.CALENDAR_API_BASE_URL}/users/me/calendarList",
+                    headers={"Authorization": f"Bearer {access_token}"}
+                ) as response:
+                    if not response.ok:
+                        error_text = await response.text()
+                        print(f"Calendar API test failed: {error_text}")
+                        return {
+                            "success": False,
+                            "error": f"Status: {response.status}, Details: {error_text}"
+                        }
+                    
+                    data = await response.json()
+                    return {
+                        "success": True,
+                        "calendars": len(data.get("items", [])),
+                        "primaryCalendarId": next(
+                            (cal["id"] for cal in data.get("items", []) if cal.get("primary")),
+                            "primary"
+                        )
+                    }
         except Exception as e:
             print(f"Error testing calendar access: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    def create_event(
+    async def create_event(
         self,
         access_token: str,
         calendar_id: str = "primary",
@@ -130,24 +131,24 @@ class GoogleCalendarService:
             print(f"Calendar ID: {calendar_id}")
             print(f"Event data: {event_data}")
             
-            response = requests.post(
-                f"{self.CALENDAR_API_BASE_URL}/calendars/{calendar_id}/events",
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json"
-                },
-                json=event_data
-            )
-            
-            if not response.ok:
-                error_text = response.text
-                print(f"Calendar API error response: {error_text}")
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Failed to create event: {error_text}"
-                )
-            
-            return response.json()
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.CALENDAR_API_BASE_URL}/calendars/{calendar_id}/events",
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json"
+                    },
+                    json=event_data
+                ) as response:
+                    if not response.ok:
+                        error_text = await response.text()
+                        print(f"Calendar API error response: {error_text}")
+                        raise HTTPException(
+                            status_code=response.status,
+                            detail=f"Failed to create event: {error_text}"
+                        )
+                    
+                    return await response.json()
         except Exception as e:
             print(f"Error creating event: {str(e)}")
             raise HTTPException(
@@ -155,7 +156,7 @@ class GoogleCalendarService:
                 detail=f"Error creating calendar event: {str(e)}"
             )
 
-    def create_event_with_refresh(
+    async def create_event_with_refresh(
         self,
         access_token: str,
         refresh_token: str,
@@ -166,7 +167,7 @@ class GoogleCalendarService:
         try:
             # First attempt with current token
             try:
-                return self.create_event(access_token, calendar_id, event_data)
+                return await self.create_event(access_token, calendar_id, event_data)
             except HTTPException as e:
                 # If unauthorized, try to refresh token
                 if e.status_code == 401:

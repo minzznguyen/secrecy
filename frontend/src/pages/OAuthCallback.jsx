@@ -4,6 +4,7 @@ import { signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { handleOAuthCallback } from '../services/googleOAuthService';
 
 export function OAuthCallback() {
   const navigate = useNavigate();
@@ -12,37 +13,19 @@ export function OAuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get the authorization code from the URL
+        // Get the authorization code and state from the URL
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         const state = urlParams.get('state');
         
-        if (!code) {
-          console.error('No authorization code found in URL');
+        if (!code || !state) {
+          console.error('Missing code or state in URL');
           navigate('/');
           return;
         }
         
-        // Exchange code for tokens
-        const response = await fetch('https://oauth2.googleapis.com/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            code,
-            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-            client_secret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET,
-            redirect_uri: `${window.location.origin}/oauth/callback`,
-            grant_type: 'authorization_code'
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to exchange code for tokens');
-        }
-        
-        const data = await response.json();
+        // Use the service to handle the OAuth callback
+        const data = await handleOAuthCallback(code, state);
         
         // Create Google credential
         const credential = GoogleAuthProvider.credential(null, data.access_token);

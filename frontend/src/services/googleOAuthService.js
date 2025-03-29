@@ -12,22 +12,36 @@ const SCOPES = [
 ].join(' ');
 
 export const initiateGoogleOAuth = () => {
-  const params = new URLSearchParams({
-    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
-    response_type: 'code',
-    scope: SCOPES,
-    access_type: 'offline',
-    prompt: 'consent'
-  });
+  try {
+    const params = new URLSearchParams({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: 'code',
+      scope: SCOPES,
+      access_type: 'offline',
+      prompt: 'consent'
+    });
 
-  // Store state for verification
-  const state = Math.random().toString(36).substring(7);
-  sessionStorage.setItem('oauth_state', state); // Using sessionStorage for temporary state
-  params.append('state', state);
+    // Store state for verification
+    const state = Math.random().toString(36).substring(7);
+    const timestamp = Date.now();
+    localStorage.setItem('oauth_state', state);
+    localStorage.setItem('oauth_state_timestamp', timestamp.toString());
+    
+    console.log('Storing OAuth state:', {
+      state,
+      timestamp: new Date(timestamp).toISOString(),
+      expiresIn: '15 minutes'
+    });
+    
+    params.append('state', state);
 
-  // Redirect to Google OAuth
-  window.location.href = `${GOOGLE_OAUTH_URL}?${params.toString()}`;
+    // Redirect to Google OAuth
+    window.location.href = `${GOOGLE_OAUTH_URL}?${params.toString()}`;
+  } catch (error) {
+    console.error('Error initiating OAuth:', error);
+    throw error;
+  }
 };
 
 export const handleOAuthCallback = async (code, state) => {
@@ -36,14 +50,45 @@ export const handleOAuthCallback = async (code, state) => {
     console.log('State:', state);
     
     // Verify state
-    const savedState = sessionStorage.getItem('oauth_state');
+    const savedState = localStorage.getItem('oauth_state');
+    const stateTimestamp = parseInt(localStorage.getItem('oauth_state_timestamp') || '0');
+    
+    console.log('Retrieved saved state:', {
+      savedState,
+      timestamp: new Date(stateTimestamp).toISOString(),
+      currentTime: new Date().toISOString(),
+      timeDiff: Math.round((Date.now() - stateTimestamp) / 1000) + ' seconds'
+    });
+    
+    // Check if state is too old (more than 15 minutes)
+    if (Date.now() - stateTimestamp > 15 * 60 * 1000) {
+      console.error('OAuth state expired:', {
+        timestamp: new Date(stateTimestamp).toISOString(),
+        currentTime: new Date().toISOString(),
+        timeDiff: Math.round((Date.now() - stateTimestamp) / 1000) + ' seconds'
+      });
+      localStorage.removeItem('oauth_state');
+      localStorage.removeItem('oauth_state_timestamp');
+      throw new Error('OAuth state expired. Please try again.');
+    }
+    
+    if (!savedState) {
+      console.error('No saved state found in localStorage');
+      throw new Error('No saved state found. Please try signing in again.');
+    }
+    
     if (state !== savedState) {
-      console.error('State mismatch:', { received: state, saved: savedState });
-      throw new Error('Invalid state parameter');
+      console.error('State mismatch:', { 
+        received: state, 
+        saved: savedState,
+        timestamp: new Date(stateTimestamp).toISOString()
+      });
+      throw new Error('Invalid state parameter. Please try signing in again.');
     }
 
     // Clear state after verification
-    sessionStorage.removeItem('oauth_state');
+    localStorage.removeItem('oauth_state');
+    localStorage.removeItem('oauth_state_timestamp');
     
     const response = await fetch(GOOGLE_TOKEN_URL, {
       method: 'POST',

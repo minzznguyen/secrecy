@@ -4,7 +4,7 @@ from ..middleware.auth_middleware import get_authenticated_user
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["calendar"])
+router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
 def get_calendar_controller():
     return CalendarController()
