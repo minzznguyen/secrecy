@@ -14,9 +14,14 @@ apt-get update && apt-get install -y \
     libavfilter-dev \
     libswscale-dev \
     libavresample-dev \
-    libavcodec-dev
+    libavcodec-dev \
+    libportaudio-dev
 
 # Install Python dependencies
 pip install --upgrade pip
-pip install pyaudio
+
+# Install pyaudio with specific version that's known to work
+pip install pyaudio==0.2.13
+
+# Install other requirements
 pip install -r requirements.txt 
