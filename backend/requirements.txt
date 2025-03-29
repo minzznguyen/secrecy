@@ -11,10 +11,10 @@ traceback-with-variables
 pydub
 ffmpeg-python
 elevenlabs
-pyaudio
 twilio
 websockets
 aiohttp>=3.8.0
 firebase-admin
 google-auth
 google-auth-oauthlib
+pyaudio

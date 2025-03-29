@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Make sure the script is executable
+chmod +x build.sh
+
 # Install system dependencies
-apt-get update && apt-get install -y \
+sudo apt-get update && sudo apt-get install -y \
     portaudio19-dev \
     python3-pyaudio \
     gcc \
