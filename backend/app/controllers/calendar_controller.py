@@ -90,7 +90,7 @@ class CalendarController:
                 )
             
             # Get user's tokens from Firebase using email
-            tokens = await self.firebase_service.get_user_tokens(user_email)
+            tokens = self.firebase_service.get_user_tokens(user_email)
             
             if not tokens:
                 raise HTTPException(
@@ -111,7 +111,7 @@ class CalendarController:
                 
                 # Update the stored tokens
                 tokens.update(updated_tokens)
-                await self.firebase_service.store_user_tokens(user_email, tokens)
+                self.firebase_service.store_user_tokens(user_email, tokens)
                 
                 logger.info("Successfully refreshed and stored new access token")
             

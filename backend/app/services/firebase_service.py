@@ -31,7 +31,7 @@ class FirebaseService:
         self.db = firestore.client()
         print("FirebaseService initialized with Firestore")
     
-    async def get_user_tokens(self, user_email: str) -> Optional[Dict]:
+    def get_user_tokens(self, user_email: str) -> Optional[Dict]:
         """Get user's Google tokens from Firestore"""
         try:
             print(f"Getting tokens for user: {user_email}")
@@ -51,7 +51,7 @@ class FirebaseService:
             print(f"Error getting user tokens: {str(e)}")
             return None
     
-    async def store_user_tokens(self, user_email: str, tokens: Dict) -> bool:
+    def store_user_tokens(self, user_email: str, tokens: Dict) -> bool:
         """Store user's Google tokens in Firestore"""
         try:
             print(f"Storing tokens for user: {user_email}")
