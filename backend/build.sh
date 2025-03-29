@@ -5,6 +5,9 @@ chmod +x build.sh
 
 # Install system dependencies
 sudo apt-get update && sudo apt-get install -y \
+    libasound-dev \
+    libportaudio2 \
+    libportaudiocpp0 \
     portaudio19-dev \
     python3-pyaudio \
     gcc \
