@@ -19,7 +19,9 @@ class TwilioController:
         self.auth_token = os.getenv("TWILIO_AUTH_TOKEN")
         self.twilio_phone = os.getenv("TWILIO_PHONE_NUMBER")
         self.elevenlabs_agent_id = os.getenv("ELEVENLABS_AGENT_ID")
-        self.ngrok_url = os.getenv("NGROK_URL")
+        
+        # Use Render URL in production or ngrok in development
+        self.base_url = os.getenv("RENDER_EXTERNAL_URL") or os.getenv("NGROK_URL")
         
         # Check if Twilio credentials are set
         if not all([self.account_sid, self.auth_token, self.twilio_phone]):
@@ -67,7 +69,7 @@ class TwilioController:
         print(f"==============================================\n")
         
         # Construct the webhook URL with properly encoded parameters
-        webhook_url = f"{self.ngrok_url}/api/twilio/voice"
+        webhook_url = f"{self.base_url}/api/twilio/voice"
         
         # Add query parameters with proper URL encoding
         params = {}
@@ -93,7 +95,7 @@ class TwilioController:
                 to=to_number,
                 from_=self.twilio_phone,
                 url=webhook_url,
-                status_callback=f"{self.ngrok_url}/api/twilio/status",
+                status_callback=f"{self.base_url}/api/twilio/status",
                 status_callback_event=['initiated', 'ringing', 'answered', 'completed'],
                 status_callback_method='POST'
             )
