@@ -16,6 +16,10 @@
      libavresample-dev \
      libavcodec-dev
  
+ # Set environment variables to help compiler find PortAudio headers
+ export CFLAGS="-I/usr/include/portaudio -I/usr/include"
+ export LDFLAGS="-lportaudio"
+ 
  # Install Python dependencies
  pip install --upgrade pip
- pip install -r requirements.txt 
+ pip install -r requirements.txt
