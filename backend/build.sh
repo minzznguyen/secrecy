@@ -23,8 +23,8 @@
  # Install Python dependencies
  pip install --upgrade pip
  
- # Install PyAudio separately with specific compiler flags
- pip install --global-option="build_ext" --global-option="-I/usr/include/portaudio" --global-option="-L/usr/lib" PyAudio
+ # Try installing a specific older version of PyAudio 
+ pip install PyAudio==0.2.11
  
  # Install remaining dependencies
  pip install -r requirements.txt
