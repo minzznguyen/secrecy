@@ -36,7 +36,7 @@ export function PhoneScheduleForm({ userAvailability, onCallComplete }) {
       }
       
       // Set up WebSocket connection
-      const websocket = new WebSocket('ws://secrecy.onrender.com/ws/twilio');
+      const websocket = new WebSocket('wss://secrecy.onrender.com/api/twilio/media-stream');
       wsRef.current = websocket;
       
       websocket.onopen = () => {
